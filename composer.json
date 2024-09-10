@@ -27,7 +27,7 @@
         "composer/installers": "^2.2",
         "johnpbloch/wordpress-core-installer": "2.0.0",
         "pantheon-systems/pantheon-mu-plugin": "*",
-        "wpackagist-plugin/pantheon-advanced-page-cache": "*",
+        "wpackagist-plugin/pantheon-advanced-page-cache": "^1.0",
         "wpackagist-plugin/wp-native-php-sessions": "*"
     },
     "require-dev": {
