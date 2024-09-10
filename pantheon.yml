@@ -1,3 +1,5 @@
+api_version: 1
+
 # We're going to use Composer since ClassicPress uses a composer.json file.
 # We'll use this as an easier way of getting the mu-plugin.
 build_step: false
