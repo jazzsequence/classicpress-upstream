@@ -28,6 +28,7 @@
         "johnpbloch/wordpress-core-installer": "2.0.0",
         "pantheon-systems/pantheon-mu-plugin": "*",
         "wpackagist-plugin/pantheon-advanced-page-cache": "^1.0",
+        "wpackagist-plugin/safe-svg": "*",
         "wpackagist-plugin/wp-native-php-sessions": "*"
     },
     "require-dev": {
