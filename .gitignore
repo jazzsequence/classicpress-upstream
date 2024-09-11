@@ -28,6 +28,7 @@ composer.lock
 wp-content/mu-plugins/pantheon-mu-plugin/
 wp-content/plugins/pantheon-advanced-page-cache/
 wp-content/plugins/wp-native-php-sessions/
+wp-content/plugins/svg-support/
 
 # Packages #
 ############
