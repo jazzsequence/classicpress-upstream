@@ -2221,7 +2221,7 @@ if ( ! function_exists( 'wp_new_user_notification' ) ) :
 		/* translators: %s: User login. */
 		$message  = sprintf( __( 'Username: %s' ), $user->user_login ) . "\r\n\r\n";
 		$message .= __( 'To set your password, visit the following address:' ) . "\r\n\r\n";
-		$message .= network_site_url( "wp-login.php?action=rp&key=$key&login=" . rawurlencode( $user->user_login ), 'login' ) . "\r\n\r\n";
+		$message .= network_site_url( "wp-login.php?action=rp&key=$key&login=" . str_replace( '.', '%2e', rawurlencode( $user->user_login ) ), 'login' ) . "\r\n\r\n";
 
 		$message .= wp_login_url() . "\r\n";
 
@@ -2518,28 +2518,55 @@ endif;
 
 if ( ! function_exists( 'wp_hash_password' ) ) :
 	/**
-	 * Creates a hash (encrypt) of a plain text password.
+	 * Creates a hash (encrypt) of a plain text password using PHP's PASSWORD_DEFAULT hashing algorithm.
 	 *
 	 * For integration with other applications, this function can be overwritten to
-	 * instead use the other package password checking algorithm.
+	 * instead use another package password checking algorithm.
 	 *
-	 * @since 2.5.0
+	 * @since CP-2.2.0
 	 *
-	 * @global PasswordHash $wp_hasher PHPass object
-	 *
-	 * @param string $password Plain text user password to hash.
-	 * @return string The hash string of the password.
+	 * @param string    $password                                  Plaintext password
+	 * @return string   The hash string of the password.
 	 */
 	function wp_hash_password( $password ) {
-		global $wp_hasher;
+		/*
+		 * Function cp_hash_password_options() is documented in wp-includes/user.php
+		 */
+		$options = cp_hash_password_options();
 
-		if ( empty( $wp_hasher ) ) {
-			require_once ABSPATH . WPINC . '/class-phpass.php';
-			// By default, use the portable hash from phpass.
-			$wp_hasher = new PasswordHash( 8, true );
+		$password = trim( $password );
+
+		if ( strlen( $password ) > 4096 ) {
+			return '*';
 		}
 
-		return $wp_hasher->HashPassword( trim( $password ) );
+		/**
+		 * Filter used to pepper the password.
+		 *
+		 * For maximum security, pepper should be stored in a file and not in the database.
+		 *
+		 * @since CP-2.2.0
+		 *
+		 * @param  string  String to be used as pepper.
+		 */
+		$pepper = apply_filters( 'cp_pepper_password', '' );
+		if ( ! empty( $pepper ) ) {
+			$maybe_peppered_password = hash_hmac( 'sha256', $password, $pepper );
+		} else {
+			$maybe_peppered_password = $password;
+		}
+
+		/**
+		 * Filter enabling the password algorithm to be changed.
+		 *
+		 * @since CP-2.2.0
+		 *
+		 * @param  string    PASSWORD_DEFAULT            PHP's current default hashing algorithm.
+		 * @return string    $algorithm                  Any algorithm recognized by PHP.
+		 */
+		$algorithm = apply_filters( 'cp_password_algorithm', PASSWORD_DEFAULT );
+
+		return password_hash( $maybe_peppered_password, $algorithm, $options );
 	}
 endif;
 
@@ -2553,9 +2580,9 @@ if ( ! function_exists( 'wp_check_password' ) ) :
 	 * against the already encrypted password to see if they match.
 	 *
 	 * For integration with other applications, this function can be overwritten to
-	 * instead use the other package password checking algorithm.
+	 * instead use another package password checking algorithm.
 	 *
-	 * @since 2.5.0
+	 * @since CP-2.2.0
 	 *
 	 * @global PasswordHash $wp_hasher PHPass object used for checking the password
 	 *                                 against the $hash + $password.
@@ -2567,42 +2594,101 @@ if ( ! function_exists( 'wp_check_password' ) ) :
 	 * @return bool False, if the $password does not match the hashed password.
 	 */
 	function wp_check_password( $password, $hash, $user_id = '' ) {
-		global $wp_hasher;
+		$check = false;
 
-		// If the hash is still md5...
+		if ( strlen( $password ) > 4096 ) {
+			return $check;
+		}
+
+		// If the hash is still md5 or otherwise truncated then invalidate it.
 		if ( strlen( $hash ) <= 32 ) {
-			$check = hash_equals( $hash, md5( $password ) );
-			if ( $check && $user_id ) {
-				// Rehash using new hash.
-				wp_set_password( $password, $user_id );
-				$hash = wp_hash_password( $password );
-			}
-
 			/**
-			 * Filters whether the plaintext password matches the encrypted password.
+			 * Filters whether the plaintext password matches the hashed password.
 			 *
 			 * @since 2.5.0
+			 * @since CP-2.3.0 Passwords are now hashed with bcrypt by default.
+			 *                 Old passwords may still be hashed with phpass.
 			 *
 			 * @param bool       $check    Whether the passwords match.
 			 * @param string     $password The plaintext password.
 			 * @param string     $hash     The hashed password.
-			 * @param string|int $user_id  User ID. Can be empty.
+			 * @param string|int $user_id  Optional ID of a user associated with the password.
+			 *                             Can be empty.
 			 */
 			return apply_filters( 'check_password', $check, $password, $hash, $user_id );
 		}
 
-		// If the stored hash is longer than an MD5,
-		// presume the new style phpass portable hash.
-		if ( empty( $wp_hasher ) ) {
-			require_once ABSPATH . WPINC . '/class-phpass.php';
-			// By default, use the portable hash from phpass.
-			$wp_hasher = new PasswordHash( 8, true );
+		/*
+		 * Function cp_hash_password_options() is documented in wp-includes/user.php
+		 */
+		$options = cp_hash_password_options();
+
+		/**
+		 * Filter used to pepper the password.
+		 *
+		 * For maximum security, pepper should be stored in a file and not in the database.
+		 *
+		 * @since CP-2.2.0
+		 *
+		 * @param  string  String to be used as pepper.
+		 */
+		$pepper = apply_filters( 'cp_pepper_password', '' );
+		$peppered_password = hash_hmac( 'sha256', $password, $pepper );
+
+		if ( password_verify( $peppered_password, $hash ) ) {
+			// Handle password verification using PHP's PASSWORD_DEFAULT hashing algorithm.
+			$check = true;
+		} elseif ( password_verify( $password, $hash ) ) {
+			// Handle password verification using PHP's PASSWORD_DEFAULT hashing algorithm.
+			$check = true;
+		} elseif ( md5( $password ) === $hash ) {
+			// Handle password verification when a temporary password has been set via Adminer or phpMyAdmin.
+			$check = true;
+		} elseif ( 0 === strpos( $hash, '$P$' ) ) {
+			// Handle password verification by the traditional WordPress method.
+			global $wp_hasher;
+
+			if ( empty( $wp_hasher ) ) {
+				require_once( ABSPATH . WPINC . '/class-phpass.php' );
+
+				$wp_hasher = new PasswordHash( 8, true );
+			}
+
+			$check = $wp_hasher->CheckPassword( $password, $hash );
+		}
+		return apply_filters( 'check_password', $check, $password, $hash, $user_id );
+	}
+endif;
+
+if ( ! function_exists( 'wp_password_needs_rehash' ) ) :
+	/**
+	 * Checks whether a password hash needs to be rehashed.
+	 *
+	 * Passwords are hashed with bcrypt using the default cost. A password hashed in a prior version
+	 * of WordPress may still be hashed with phpass and will need to be rehashed. If the default cost
+	 * or algorithm is changed in PHP or WordPress then a password hashed in a previous version will
+	 * need to be rehashed.
+	 *
+	 * @since CP-2.3.0
+	 *
+	 * @global PasswordHash $wp_hasher phpass object.
+	 *
+	 * @param string $hash Hash of a password to check.
+	 * @return bool Whether the hash needs to be rehashed.
+	 */
+	function wp_password_needs_rehash( $hash ) {
+		global $wp_hasher;
+
+		if ( ! empty( $wp_hasher ) ) {
+			return false;
 		}
 
-		$check = $wp_hasher->CheckPassword( $password, $hash );
+		/*
+		 * Function cp_hash_password_options() is documented in wp-includes/user.php
+		 */
+		$options = cp_hash_password_options();
 
-		/** This filter is documented in wp-includes/pluggable.php */
-		return apply_filters( 'check_password', $check, $password, $hash, $user_id );
+		return password_needs_rehash( $hash, PASSWORD_DEFAULT, $options );
 	}
 endif;
 
@@ -2759,6 +2845,8 @@ if ( ! function_exists( 'wp_set_password' ) ) :
 	function wp_set_password( $password, $user_id ) {
 		global $wpdb;
 
+		$old_user_data = get_userdata( $user_id );
+
 		$hash = wp_hash_password( $password );
 		$wpdb->update(
 			$wpdb->users,
@@ -2775,11 +2863,13 @@ if ( ! function_exists( 'wp_set_password' ) ) :
 		 * Fires after the user password is set.
 		 *
 		 * @since 6.2.0
+		 * @since 6.7.0 The `$old_user_data` parameter was added.
 		 *
-		 * @param string $password The plaintext password just set.
-		 * @param int    $user_id  The ID of the user whose password was just set.
+		 * @param string  $password      The plaintext password just set.
+		 * @param int     $user_id       The ID of the user whose password was just set.
+		 * @param WP_User $old_user_data Object containing user's data prior to update.
 		 */
-		do_action( 'wp_set_password', $password, $user_id );
+		do_action( 'wp_set_password', $password, $user_id, $old_user_data );
 	}
 endif;
 

@@ -317,7 +317,6 @@ table.fixed {
 
 .fixed .column-role,
 .fixed .column-posts {
-	-webkit-hyphens: auto;
 	hyphens: auto;
 }
 
@@ -1021,6 +1020,10 @@ tr.inline-edit-row td {
 .quick-edit-row-post fieldset.inline-edit-col-right label span.title {
 	width: auto;
 	padding-right: 0.5em;
+}
+
+.upload-php .quick-edit-row-post fieldset.inline-edit-col-right label span.title {
+	width: 6em;
 }
 
 .inline-edit-row .inline-edit-or {
@@ -1907,7 +1910,6 @@ div.action-links,
 	/* Show comment bubble as text instead */
 	.post-com-count .screen-reader-text {
 		position: static;
-		-webkit-clip-path: none;
 		clip-path: none;
 		width: auto;
 		height: auto;

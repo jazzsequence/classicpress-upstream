@@ -101,6 +101,8 @@ $allowed_options            = array(
 		'timezone_string',
 		'WPLANG',
 		'new_admin_email',
+		'disable_emojis',
+		'disable_xml_rpc',
 	),
 	'discussion' => array(
 		'default_pingback_flag',
@@ -186,6 +188,7 @@ if ( ! is_multisite() ) {
 	$allowed_options['writing'][] = 'ping_sites';
 
 	$allowed_options['media'][] = 'uploads_use_yearmonth_folders';
+	$allowed_options['media'][] = 'wp_attachment_pages_enabled';
 
 	/*
 	 * If upload_url_path is not the default (empty),

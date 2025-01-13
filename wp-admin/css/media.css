@@ -229,10 +229,6 @@
 	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-.upload-php .fixed .column-parent {
-	width: 15%;
-}
-
 .js .html-uploader #plupload-upload-ui {
 	display: none;
 }
@@ -479,6 +475,19 @@ border color while dragging a file over the uploader drop area */
 	border: none;
 }
 
+.upload-php .fixed .column-title {
+	width: 250px;
+	max-width: 100%;
+}
+
+.upload-php .fixed .column-author {
+	width: unset;
+}
+
+.upload-php .fixed .column-date {
+	width: 100px;
+}
+
 .upload-php .mode-grid .media-sidebar {
 	position: relative;
 	width: auto;
@@ -670,11 +679,6 @@ border color while dragging a file over the uploader drop area */
 	right: 51px;
 }
 
-.edit-attachment-frame .media-frame-title {
-	left: 0;
-	right: 150px; /* leave space for prev/next/close */
-}
-
 .edit-attachment-frame .edit-media-header .right:before,
 .edit-attachment-frame .edit-media-header .left:before {
 	font: normal 20px/50px dashicons !important;
@@ -723,19 +727,15 @@ border color while dragging a file over the uploader drop area */
 	cursor: default;
 }
 
-.edit-attachment-frame .media-frame-content,
 .edit-attachment-frame .media-frame-router {
 	left: 0;
 }
 
 .edit-attachment-frame .media-frame-content {
 	border-bottom: none;
-	bottom: 0;
-	top: 50px;
 }
 
 .edit-attachment-frame .attachment-details {
-	position: absolute;
 	overflow: auto;
 	top: 0;
 	bottom: 0;
